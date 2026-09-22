@@ -9,6 +9,7 @@ require("dotenv").config({
 const healthRoutes = require("./routes/healthRoutes");
 const examRoutes = require("./routes/examRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
+const topicsRoutes = require("./routes/topicsRoutes");
 const pool = require("./config/db");
 
 const app = express();
@@ -28,6 +29,7 @@ app.use(express.static(path.join(__dirname, "../client")));
 app.use("/api/health", healthRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/subjects", subjectRoutes);
+app.use("/api/topics", topicsRoutes);
 
 // Test PostgreSQL connection
 pool.query("SELECT NOW()")
