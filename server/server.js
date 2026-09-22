@@ -10,6 +10,7 @@ const healthRoutes = require("./routes/healthRoutes");
 const examRoutes = require("./routes/examRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
 const topicsRoutes = require("./routes/topicsRoutes");
+const questionRoutes = require("./routes/questionRoutes");
 const pool = require("./config/db");
 
 const app = express();
@@ -30,6 +31,7 @@ app.use("/api/health", healthRoutes);
 app.use("/api/exams", examRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/topics", topicsRoutes);
+app.use("/api/questions", questionRoutes);
 
 // Test PostgreSQL connection
 pool.query("SELECT NOW()")
