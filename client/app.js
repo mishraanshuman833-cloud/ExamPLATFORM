@@ -1,5 +1,6 @@
 const API_BASE_URL = "http://localhost:5000/api";
 const REGISTERED_USER_STORAGE_KEY = "examPlatform.registeredUser";
+const MOCK_TEST_RESULT_STORAGE_KEY = "examPlatform.latestMockTestResult";
 let activeMockTestSession = null;
 let mockTestTimerInterval = null;
 let registeredUser = loadRegisteredUser();
@@ -547,6 +548,7 @@ function startMockTest(test) {
     return;
   }
 
+  clearSavedMockTestResult();
   clearMockTestSession();
   activeMockTestSession = {
     test,
@@ -814,9 +816,10 @@ async function submitMockTest() {
       throw new Error(result.message || "The test could not be submitted. Please try again.");
     }
 
+    const resultSaved = saveMockTestResult(session.test, result.data);
     session.completed = true;
     clearMockTestSession();
-    renderMockTestResult(session.test, result.data);
+    renderMockTestResult(session.test, result.data, !resultSaved);
   } catch (error) {
     console.error("Mock test submission failed:", error);
     session.submitting = false;
@@ -826,7 +829,7 @@ async function submitMockTest() {
   }
 }
 
-function renderMockTestResult(test, result) {
+function renderMockTestResult(test, result, persistenceUnavailable = false) {
   const mainContent = document.querySelector(".main-content");
   mainContent.replaceChildren();
 
@@ -848,9 +851,21 @@ function renderMockTestResult(test, result) {
   returnButton.type = "button";
   returnButton.className = "mock-quiz-secondary-button";
   returnButton.textContent = "Back to Mock Tests";
-  returnButton.addEventListener("click", showMockTestPage);
+  returnButton.addEventListener("click", () => {
+    clearSavedMockTestResult();
+    showMockTestPage();
+  });
   header.append(titleGroup, returnButton);
   mainContent.appendChild(header);
+
+  if (persistenceUnavailable) {
+    const notice = document.createElement("p");
+    notice.className = "mock-result-persistence-notice";
+    notice.setAttribute("role", "status");
+    notice.textContent =
+      "This result could not be saved for refresh in this tab. Keep this page open to view it.";
+    mainContent.appendChild(notice);
+  }
 
   const summary = document.createElement("section");
   summary.className = "mock-result-summary";
@@ -933,6 +948,61 @@ function renderMockTestResult(test, result) {
   });
   reviewPanel.appendChild(answerList);
   mainContent.appendChild(reviewPanel);
+}
+
+function saveMockTestResult(test, result) {
+  try {
+    window.sessionStorage.setItem(
+      MOCK_TEST_RESULT_STORAGE_KEY,
+      JSON.stringify({ version: 1, test, result })
+    );
+    return true;
+  } catch (error) {
+    console.error("Unable to save completed mock test result:", error);
+    return false;
+  }
+}
+
+function clearSavedMockTestResult() {
+  try {
+    window.sessionStorage.removeItem(MOCK_TEST_RESULT_STORAGE_KEY);
+  } catch (error) {
+    console.error("Unable to clear saved mock test result:", error);
+  }
+}
+
+function restoreSavedMockTestResult() {
+  let savedResult;
+  try {
+    const savedValue = window.sessionStorage.getItem(
+      MOCK_TEST_RESULT_STORAGE_KEY
+    );
+    if (!savedValue) {
+      return;
+    }
+
+    savedResult = JSON.parse(savedValue);
+  } catch (error) {
+    console.error("Unable to read saved mock test result:", error);
+    clearSavedMockTestResult();
+    return;
+  }
+
+  if (
+    !savedResult ||
+    typeof savedResult !== "object" ||
+    savedResult.version !== 1 ||
+    !savedResult.test ||
+    !Array.isArray(savedResult.test.questions) ||
+    !savedResult.result ||
+    !Array.isArray(savedResult.result.answers)
+  ) {
+    console.error("Saved mock test result has an invalid format");
+    clearSavedMockTestResult();
+    return;
+  }
+
+  renderMockTestResult(savedResult.test, savedResult.result);
 }
 
 function clearMockTestSession() {
@@ -1218,3 +1288,5 @@ async function loadTopics(subjectId, subjectName) {
     `;
   }
 }
+
+restoreSavedMockTestResult();

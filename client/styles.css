@@ -1009,6 +1009,16 @@ a {
   margin-top: 6px;
 }
 
+.mock-result-persistence-notice {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 10px;
+  color: #9a3412;
+  font-size: 13px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+}
+
 .mock-result-explanation {
   border-top: 1px solid var(--border);
   color: var(--muted);
