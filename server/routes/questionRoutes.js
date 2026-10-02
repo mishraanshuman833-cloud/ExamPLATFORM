@@ -28,8 +28,12 @@ router.get("/", async (req, res) => {
       LEFT JOIN topics t ON t.id = q.topic_id
       LEFT JOIN subjects s ON s.id = t.subject_id
       LEFT JOIN exams e ON e.id = s.exam_id
+      WHERE $1::text IS NULL
+        OR e.id::text = $1
+        OR e.slug = $1
       ORDER BY q.id ASC
-      `
+      `,
+      [req.query.examId || null]
     );
 
     res.status(200).json({

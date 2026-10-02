@@ -569,7 +569,7 @@ CREATE TABLE IF NOT EXISTS current_affairs (
 CREATE TABLE IF NOT EXISTS attempts (
     id BIGSERIAL PRIMARY KEY,
 
-    user_id BIGINT NOT NULL
+    user_id BIGINT
         REFERENCES users(id)
         ON DELETE CASCADE,
 
