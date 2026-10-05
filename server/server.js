@@ -13,11 +13,15 @@ const examRoutes = require("./routes/examRoutes");
 const subjectRoutes = require("./routes/subjectRoutes");
 const topicsRoutes = require("./routes/topicsRoutes");
 const questionRoutes = require("./routes/questionRoutes");
+const practiceQuestionRoutes = require("./routes/practiceQuestionRoutes");
+const adminQuestionBankRoutes = require("./routes/adminQuestionBankRoutes");
+const examPatternRoutes = require("./routes/examPatternRoutes");
 const geminiRoutes = require("./routes/geminiRoutes");
 const mockTestRoutes = require("./routes/mockTestRoutes");
 const resultRoutes = require("./routes/resultRoutes");
 const authRoutes = require("./routes/authRoutes");
 const pool = require("./config/db");
+const { sendRegistrationOtp } = require("./services/registrationEmail");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +41,7 @@ app.locals.genAI = genAI;
 
 // Make database pool available to routes
 app.locals.pool = pool;
+app.locals.sendRegistrationOtp = sendRegistrationOtp;
 
 // ================================
 // Middleware
@@ -57,6 +62,9 @@ app.use("/api/exams", examRoutes);
 app.use("/api/subjects", subjectRoutes);
 app.use("/api/topics", topicsRoutes);
 app.use("/api/questions", questionRoutes);
+app.use("/api/practice/questions", practiceQuestionRoutes);
+app.use("/api/admin/question-bank", adminQuestionBankRoutes);
+app.use("/api/exam-patterns", examPatternRoutes);
 app.use("/api/mock-tests", mockTestRoutes);
 app.use("/api/results", resultRoutes);
 app.use("/api/auth", authRoutes);

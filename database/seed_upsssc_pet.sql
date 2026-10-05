@@ -52,6 +52,7 @@ SET slug = EXCLUDED.slug,
 
 INSERT INTO questions (
     topic_id,
+    language,
     question_text,
     question_type,
     explanation,
@@ -63,18 +64,18 @@ INSERT INTO questions (
     review_status,
     is_published
 )
-SELECT t.id, seeded.question_text, 'mcq', seeded.explanation, 'easy', 1, 0.25, 'manual', FALSE, 'approved', TRUE
+SELECT t.id, seeded.language, seeded.question_text, 'mcq', seeded.explanation, 'easy', 1, 0.25, 'manual', FALSE, 'approved', TRUE
 FROM exams e
 JOIN subjects s ON s.exam_id = e.id
 JOIN topics t ON t.subject_id = s.id
 JOIN (
     VALUES
-        ('General Knowledge', 'indian-constitution', 'When did the Constitution of India come into effect?', 'The Constitution of India came into effect on 26 January 1950, celebrated as Republic Day.'),
-        ('General Science', 'biology', 'Which pigment enables plants to absorb light for photosynthesis?', 'Chlorophyll is the green pigment that absorbs light energy for photosynthesis.'),
-        ('General Hindi', 'hindi-vocabulary', '‘जल’ का पर्यायवाची शब्द कौन-सा है?', '‘नीर’ का अर्थ जल या पानी होता है।'),
-        ('Reasoning', 'number-series', 'What is the next number in the series 2, 6, 12, 20, 30?', 'The successive differences are 4, 6, 8 and 10. The next difference is 12, so the next number is 42.'),
-        ('Mathematics', 'percentages', 'What is 25% of 240?', '25% is one quarter, and one quarter of 240 is 60.')
-) AS seeded(subject_name, topic_slug, question_text, explanation)
+        ('General Knowledge', 'indian-constitution', 'en', 'When did the Constitution of India come into effect?', 'The Constitution of India came into effect on 26 January 1950, celebrated as Republic Day.'),
+        ('General Science', 'biology', 'en', 'Which pigment enables plants to absorb light for photosynthesis?', 'Chlorophyll is the green pigment that absorbs light energy for photosynthesis.'),
+        ('General Hindi', 'hindi-vocabulary', 'hi', '‘जल’ का पर्यायवाची शब्द कौन-सा है?', '‘नीर’ का अर्थ जल या पानी होता है।'),
+        ('Reasoning', 'number-series', 'en', 'What is the next number in the series 2, 6, 12, 20, 30?', 'The successive differences are 4, 6, 8 and 10. The next difference is 12, so the next number is 42.'),
+        ('Mathematics', 'percentages', 'en', 'What is 25% of 240?', '25% is one quarter, and one quarter of 240 is 60.')
+) AS seeded(subject_name, topic_slug, language, question_text, explanation)
 ON seeded.subject_name = s.name
 AND seeded.topic_slug = t.slug
 WHERE e.slug = 'upsssc-pet'
@@ -91,7 +92,7 @@ FROM questions q
 JOIN topics t ON t.id = q.topic_id
 JOIN subjects s ON s.id = t.subject_id
 JOIN exams e ON e.id = s.exam_id
-JOIN (
+CROSS JOIN (
     VALUES
         ('General Knowledge', 'indian-constitution', 'When did the Constitution of India come into effect?', 'A', '15 August 1947', FALSE),
         ('General Knowledge', 'indian-constitution', 'When did the Constitution of India come into effect?', 'B', '26 January 1950', TRUE),
@@ -153,7 +154,7 @@ INSERT INTO mock_test_questions (mock_test_id, question_id, question_order, mark
 SELECT mt.id, q.id, seeded.order_no, 1
 FROM mock_tests mt
 JOIN exams e ON e.id = mt.exam_id
-JOIN (
+CROSS JOIN (
     VALUES
         ('UPSSSC PET Foundation Mock Test 1', 'When did the Constitution of India come into effect?', 1),
         ('UPSSSC PET Foundation Mock Test 1', 'Which pigment enables plants to absorb light for photosynthesis?', 2),

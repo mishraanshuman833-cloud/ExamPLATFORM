@@ -1,4 +1,5 @@
 const express = require("express");
+const { requireAuthenticatedUser } = require("../middleware/authSession");
 
 const router = express.Router();
 const DIFFICULTIES = new Set(["easy", "medium", "hard"]);
@@ -17,8 +18,7 @@ function isValidDatabaseId(value) {
   );
 }
 
-// Get all questions
-router.get("/", async (req, res) => {
+router.get("/", requireAuthenticatedUser, async (req, res) => {
   const examId = getOptionalQueryValue(req.query.examId);
   const sectionId = getOptionalQueryValue(req.query.sectionId);
   const topicId = getOptionalQueryValue(req.query.topicId);
@@ -60,28 +60,29 @@ router.get("/", async (req, res) => {
     const result = await req.app.locals.pool.query(
       `
       SELECT
-        q.id,
-        q.topic_id,
-        t.name AS topic_name,
-        s.id AS subject_id,
-        s.name AS subject_name,
-        s.id AS section_id,
-        s.name AS section_name,
-        e.id AS exam_id,
-        e.name AS exam_name,
-        q.question_text,
+        q.id AS "questionId",
+        q.topic_id AS "topicId",
+        t.name AS topic,
+        s.id AS "sectionId",
+        s.name AS section,
+        e.id AS "examId",
+        e.name AS exam,
+        q.question_text AS question,
         q.language,
-        q.question_type,
+        q.question_type AS "questionType",
         q.difficulty,
         q.marks,
-        q.negative_marks,
-        q.question_origin,
-        q.ai_generated,
-        q.review_status
+        q.negative_marks AS "negativeMarks",
+        q.explanation,
+        qo.id AS "optionId",
+        qo.option_key AS "optionKey",
+        qo.option_text AS "optionText",
+        qo.is_correct AS "optionIsCorrect"
       FROM questions q
       INNER JOIN topics t ON t.id = q.topic_id
       INNER JOIN subjects s ON s.id = t.subject_id
       INNER JOIN exams e ON e.id = s.exam_id
+      INNER JOIN question_options qo ON qo.question_id = q.id
       WHERE q.is_published = TRUE
         AND q.review_status = 'approved'
         AND e.is_active = TRUE
@@ -90,22 +91,59 @@ router.get("/", async (req, res) => {
         AND ($3::bigint IS NULL OR t.id = $3)
         AND ($4::text IS NULL OR q.difficulty = $4)
         AND ($5::text IS NULL OR q.language = $5)
-      ORDER BY q.id ASC
+      ORDER BY q.id ASC, qo.option_key ASC
       `,
       [examId, sectionId, topicId, difficulty, language]
     );
 
-    res.status(200).json({
+    const questionsById = new Map();
+    for (const row of result.rows) {
+      const questionId = String(row.questionId);
+      if (!questionsById.has(questionId)) {
+        questionsById.set(questionId, {
+          id: questionId,
+          topicId: String(row.topicId),
+          topic: row.topic,
+          sectionId: String(row.sectionId),
+          section: row.section,
+          examId: String(row.examId),
+          exam: row.exam,
+          question: row.question,
+          language: row.language,
+          questionType: row.questionType,
+          difficulty: row.difficulty,
+          marks: row.marks,
+          negativeMarks: row.negativeMarks,
+          explanation: row.explanation,
+          options: [],
+          correctAnswer: null
+        });
+      }
+
+      const option = {
+        id: String(row.optionId),
+        key: row.optionKey,
+        text: row.optionText
+      };
+      const question = questionsById.get(questionId);
+      question.options.push(option);
+      if (row.optionIsCorrect) {
+        question.correctAnswer = option;
+      }
+    }
+
+    const questions = Array.from(questionsById.values());
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json({
       success: true,
-      count: result.rows.length,
-      data: result.rows
+      count: questions.length,
+      data: questions
     });
   } catch (error) {
-    console.error("Error fetching questions:", error.message);
-
-    res.status(500).json({
+    console.error("Error fetching authenticated practice questions:", error.message);
+    return res.status(500).json({
       success: false,
-      message: "Failed to fetch questions"
+      message: "Failed to fetch practice questions"
     });
   }
 });

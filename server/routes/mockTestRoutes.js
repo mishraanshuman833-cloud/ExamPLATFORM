@@ -1,6 +1,54 @@
 const express = require("express");
+const { createMockTestAttemptToken } = require("../middleware/mockTestAttempt");
 
 const router = express.Router();
+
+router.post("/:testId/start", async (req, res) => {
+  const testId = req.params.testId;
+  if (!/^[1-9]\d*$/.test(testId)) {
+    return res.status(400).json({
+      success: false,
+      message: "A valid mock test ID is required"
+    });
+  }
+
+  try {
+    const result = await req.app.locals.pool.query(
+      `
+      SELECT mt.id, mt.duration_minutes
+      FROM mock_tests mt
+      INNER JOIN exams e ON e.id = mt.exam_id
+      WHERE mt.id = $1
+        AND mt.is_published = TRUE
+        AND e.is_active = TRUE
+      `,
+      [testId]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Mock test not found"
+      });
+    }
+
+    const test = result.rows[0];
+    const startedAt = Date.now();
+    const durationMinutes = Number(test.duration_minutes);
+    const deadline = startedAt + durationMinutes * 60 * 1000;
+    return res.json({
+      success: true,
+      durationMinutes,
+      deadline,
+      attemptToken: createMockTestAttemptToken(test.id, durationMinutes, startedAt)
+    });
+  } catch (error) {
+    console.error("Unable to start mock test:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Mock test could not be started"
+    });
+  }
+});
 
 router.get("/:testId", async (req, res) => {
   try {
@@ -20,7 +68,9 @@ router.get("/:testId", async (req, res) => {
         q.question_text,
         q.question_type,
         q.difficulty,
+        q.language,
         mtq.marks,
+        s.id AS section_id,
         s.name AS subject_name,
         t.name AS topic_name,
         qo.id AS option_id,
@@ -61,7 +111,9 @@ router.get("/:testId", async (req, res) => {
           text: row.question_text,
           type: row.question_type,
           difficulty: row.difficulty,
+          language: row.language,
           marks: row.marks,
+          sectionId: row.section_id,
           subject: row.subject_name,
           topic: row.topic_name,
           options: []
